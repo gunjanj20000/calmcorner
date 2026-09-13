@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ACTIVITIES, AnimationSpeed, Theme, BackgroundSoundType } from '../../types';
+import kjLogo from '../../assets/kj-logo.png';
 
 interface ParentSettingsModalProps {
   isOpen: boolean;
@@ -182,7 +183,7 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
               <p className="text-sm text-slate-500 dark:text-slate-400">Customized sensory environment</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             {isUnlocked && (
               <button
                 onClick={handleUpdateApp}
@@ -194,6 +195,19 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
                 <span>{isUpdating ? 'Updating...' : 'Update App'}</span>
               </button>
             )}
+
+            {/* Small Brand Icon */}
+            <div 
+              className="w-10 h-10 rounded-full p-0.5 bg-white shadow-xs border border-slate-200/90 dark:border-slate-700 flex items-center justify-center overflow-hidden flex-shrink-0" 
+              title="KJ"
+            >
+              <img 
+                src={kjLogo} 
+                alt="KJ Logo" 
+                className="w-full h-full object-contain rounded-full select-none" 
+              />
+            </div>
+
             <button
               onClick={onClose}
               aria-label="Close"

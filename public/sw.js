@@ -1,4 +1,4 @@
-const CACHE_NAME = 'calm-corner-v1';
+const CACHE_NAME = 'calm-corner-v2';
 const PRECACHE_URLS = [
   './',
   './index.html',
@@ -7,7 +7,8 @@ const PRECACHE_URLS = [
   './icon-192.png',
   './icon-512.png',
   './icon-maskable.png',
-  './apple-touch-icon.png'
+  './apple-touch-icon.png',
+  './kj-logo.png'
 ];
 
 // Install event - precache core shell
