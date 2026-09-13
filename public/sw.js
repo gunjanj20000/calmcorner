@@ -74,3 +74,16 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// Client-triggered instant cache clear & update
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
+    caches.keys().then((names) => {
+      return Promise.all(names.map((name) => caches.delete(name)));
+    });
+  }
+});
+

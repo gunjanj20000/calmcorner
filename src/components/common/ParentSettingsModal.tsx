@@ -16,7 +16,8 @@ import {
   Heart,
   Sliders,
   Sparkles,
-  Music
+  Music,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { ACTIVITIES, AnimationSpeed, Theme, BackgroundSoundType } from '../../types';
@@ -34,6 +35,41 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
   const [holdProgress, setHoldProgress] = useState(0); // 0 to 100
   const holdTimerRef = useRef<number | null>(null);
   const holdStartTimeRef = useRef<number>(0);
+
+  // App update state
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<string | null>(null);
+
+  const handleUpdateApp = async () => {
+    triggerHaptic(20);
+    setIsUpdating(true);
+    setUpdateStatus('Checking for latest code changes...');
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update();
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        }
+      }
+
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+      }
+
+      setUpdateStatus('Applying updates and reloading...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 700);
+    } catch (err) {
+      console.warn('Update failed:', err);
+      window.location.reload();
+    }
+  };
 
   // Reset unlock state when modal closes
   useEffect(() => {
@@ -89,13 +125,26 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
               <p className="text-sm text-slate-500 dark:text-slate-400">Customized sensory environment</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="touch-btn p-3 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isUnlocked && (
+              <button
+                onClick={handleUpdateApp}
+                disabled={isUpdating}
+                title="Update app to recent changes in code"
+                className="touch-btn px-3.5 py-2 rounded-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1.5 border border-indigo-200 dark:border-indigo-800 shadow-xs transition-all active:scale-95 disabled:opacity-60"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 ${isUpdating ? 'animate-spin' : ''}`} />
+                <span>{isUpdating ? 'Updating...' : 'Update App'}</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="touch-btn p-2.5 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -460,7 +509,28 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
               </p>
             </section>
 
-            {/* 9. Reset Settings */}
+            {/* 9. Update to Recent Code Changes */}
+            <section className="p-4 sm:p-5 rounded-3xl bg-indigo-50/80 dark:bg-slate-800 border border-indigo-200/80 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center sm:text-left">
+                <h4 className="font-bold text-indigo-900 dark:text-indigo-200 flex items-center justify-center sm:justify-start gap-2">
+                  <RefreshCw className={`w-4 h-4 text-indigo-600 dark:text-indigo-400 ${isUpdating ? 'animate-spin' : ''}`} />
+                  Update App to Recent Code Changes
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400">
+                  {updateStatus || 'Fetch the latest code and clear offline cached files'}
+                </p>
+              </div>
+              <button
+                onClick={handleUpdateApp}
+                disabled={isUpdating}
+                className="touch-btn px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md flex items-center justify-center gap-2 active:scale-95 disabled:opacity-60 transition-all w-full sm:w-auto"
+              >
+                <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
+                <span>{isUpdating ? 'Updating...' : 'Update App'}</span>
+              </button>
+            </section>
+
+            {/* 10. Reset Settings */}
             <div className="pt-2">
               <button
                 onClick={() => {
