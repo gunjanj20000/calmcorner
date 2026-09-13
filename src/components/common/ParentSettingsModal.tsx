@@ -15,10 +15,11 @@ import {
   Check, 
   Heart,
   Sliders,
-  Sparkles
+  Sparkles,
+  Music
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { ACTIVITIES, AnimationSpeed, Theme } from '../../types';
+import { ACTIVITIES, AnimationSpeed, Theme, BackgroundSoundType } from '../../types';
 
 interface ParentSettingsModalProps {
   isOpen: boolean;
@@ -221,6 +222,47 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
                   />
                 </div>
               )}
+            </section>
+
+            {/* 2b. Background Music & Ambience across All Activities */}
+            <section className="space-y-3">
+              <div>
+                <label className="block text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Music className="w-5 h-5 text-indigo-500" />
+                  Background Soundtrack (Plays across all activities)
+                </label>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Continuous soothing acoustic masking while exploring Bubbles, Water, Drawing, etc.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {[
+                  { id: 'tones', emoji: '🎵', name: 'Soft Tones' },
+                  { id: 'ocean', emoji: '🌊', name: 'Ocean Waves' },
+                  { id: 'rain', emoji: '🌧️', name: 'Gentle Rain' },
+                  { id: 'forest', emoji: '🌲', name: 'Pine Forest' },
+                  { id: 'birds', emoji: '🐦', name: 'Peaceful Birds' },
+                  { id: 'bells', emoji: '🔔', name: 'Gentle Bells' },
+                  { id: 'none', emoji: '🔇', name: 'No Ambience' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      triggerHaptic(15);
+                      updateSettings({ backgroundSound: s.id as BackgroundSoundType });
+                    }}
+                    className={`touch-btn p-3 rounded-2xl border-2 flex items-center gap-2.5 font-bold text-sm transition-all ${
+                      settings.backgroundSound === s.id
+                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-200 shadow-sm'
+                        : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    <span className="text-2xl">{s.emoji}</span>
+                    <span className="flex-1 text-left truncate">{s.name}</span>
+                    {settings.backgroundSound === s.id && <Check className="w-4 h-4 text-indigo-600 flex-shrink-0" />}
+                  </button>
+                ))}
+              </div>
             </section>
 
             {/* 3. Sensory Toggles: Vibration & Reduce Motion */}

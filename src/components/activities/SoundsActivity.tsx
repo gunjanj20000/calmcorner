@@ -15,8 +15,43 @@ interface SoundOption {
 }
 
 export const SoundsActivity: React.FC = () => {
-  const { settings, updateSettings, triggerHaptic } = useApp();
-  const [activeSounds, setActiveSounds] = useState<AmbientSoundType[]>(() => audioService.getPlayingAmbients());
+  const { settings, updateSettings, triggerHaptic, backgroundSound, setBackgroundSound } = useApp();
+  const [activeSounds, setActiveSounds] = useState<AmbientSoundType[]>(() => {
+    return backgroundSound !== 'none' ? [backgroundSound as AmbientSoundType] : [];
+  });
+
+  // Keep state in sync with audioService and backgroundSound
+  useEffect(() => {
+    const playing = audioService.getPlayingAmbients();
+    if (backgroundSound !== 'none' && !playing.includes(backgroundSound as AmbientSoundType)) {
+      audioService.startAmbient(backgroundSound as AmbientSoundType);
+    }
+    setActiveSounds(audioService.getPlayingAmbients());
+  }, [backgroundSound]);
+
+  const handleToggleSound = (type: AmbientSoundType) => {
+    triggerHaptic(20);
+    audioService.unlock();
+    if (!settings.soundsEnabled) {
+      updateSettings({ soundsEnabled: true });
+    }
+
+    if (backgroundSound === type) {
+      setBackgroundSound('none');
+      audioService.stopAmbient(type);
+      setActiveSounds([]);
+    } else {
+      setBackgroundSound(type);
+      setActiveSounds([type]);
+    }
+  };
+
+  const handleStopAll = () => {
+    triggerHaptic(25);
+    setBackgroundSound('none');
+    audioService.stopAllAmbients();
+    setActiveSounds([]);
+  };
 
   const soundOptions: SoundOption[] = [
     {
@@ -74,27 +109,6 @@ export const SoundsActivity: React.FC = () => {
       bgActive: 'bg-purple-50 dark:bg-purple-950/60',
     },
   ];
-
-  // Keep state in sync with audioService
-  useEffect(() => {
-    setActiveSounds(audioService.getPlayingAmbients());
-  }, []);
-
-  const handleToggleSound = (type: AmbientSoundType) => {
-    triggerHaptic(20);
-    // Unmute if muted
-    if (!settings.soundsEnabled) {
-      updateSettings({ soundsEnabled: true });
-    }
-    audioService.toggleAmbient(type);
-    setActiveSounds(audioService.getPlayingAmbients());
-  };
-
-  const handleStopAll = () => {
-    triggerHaptic(25);
-    audioService.stopAllAmbients();
-    setActiveSounds([]);
-  };
 
   const anyPlaying = activeSounds.length > 0;
 

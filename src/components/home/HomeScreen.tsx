@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
-import { ACTIVITIES, ActivityId } from '../../types';
-import { Settings, Volume2, VolumeX, Maximize2, Sparkles, Clock } from 'lucide-react';
+import { ACTIVITIES, ActivityId, BackgroundSoundType } from '../../types';
+import { Settings, Volume2, VolumeX, Maximize2, Sparkles, Clock, Music } from 'lucide-react';
 import { InstallPromptBanner } from '../common/InstallPromptBanner';
 import { ActivityIcon } from '../common/ActivityIcon';
 
@@ -13,7 +13,9 @@ export const HomeScreen: React.FC = () => {
     updateSettings, 
     triggerHaptic, 
     playChime,
-    sessionTimeRemaining 
+    sessionTimeRemaining,
+    backgroundSound,
+    setBackgroundSound
   } = useApp();
 
   const handleSelectActivity = (id: ActivityId) => {
@@ -40,6 +42,43 @@ export const HomeScreen: React.FC = () => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  const soundCycle: BackgroundSoundType[] = ['tones', 'ocean', 'rain', 'forest', 'birds', 'bells', 'none'];
+
+  const cycleBackgroundSound = () => {
+    triggerHaptic(20);
+    const currentIndex = soundCycle.indexOf(backgroundSound);
+    const nextIndex = (currentIndex + 1) % soundCycle.length;
+    const nextSound = soundCycle[nextIndex];
+    setBackgroundSound(nextSound);
+    if (nextSound !== 'none' && !settings.soundsEnabled) {
+      updateSettings({ soundsEnabled: true });
+    }
+  };
+
+  const getSoundEmoji = (sound: BackgroundSoundType) => {
+    switch (sound) {
+      case 'tones': return '🎵';
+      case 'ocean': return '🌊';
+      case 'rain': return '🌧️';
+      case 'forest': return '🌲';
+      case 'birds': return '🐦';
+      case 'bells': return '🔔';
+      default: return '🔇';
+    }
+  };
+
+  const getSoundLabel = (sound: BackgroundSoundType) => {
+    switch (sound) {
+      case 'tones': return 'Tones';
+      case 'ocean': return 'Ocean';
+      case 'rain': return 'Rain';
+      case 'forest': return 'Forest';
+      case 'birds': return 'Birds';
+      case 'bells': return 'Bells';
+      default: return 'Off';
+    }
   };
 
   return (
@@ -84,6 +123,23 @@ export const HomeScreen: React.FC = () => {
               <span>{formatTimer(sessionTimeRemaining)}</span>
             </div>
           )}
+
+          {/* Background Sound Pill */}
+          <button
+            onClick={cycleBackgroundSound}
+            aria-label={`Background Sound: ${getSoundLabel(backgroundSound)}. Tap to change`}
+            className={`touch-btn flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border shadow-md transition-all active:scale-95 ${
+              backgroundSound !== 'none' && settings.soundsEnabled
+                ? 'bg-indigo-50 dark:bg-indigo-950/80 border-indigo-300 dark:border-indigo-700 text-indigo-700 dark:text-indigo-300 ring-2 ring-indigo-300/40'
+                : 'bg-white/90 dark:bg-slate-800/90 border-slate-200/80 dark:border-slate-700 text-slate-500 dark:text-slate-400'
+            }`}
+          >
+            <span className="text-xl">{getSoundEmoji(backgroundSound)}</span>
+            <span className="text-xs sm:text-sm font-extrabold hidden sm:inline">
+              {getSoundLabel(backgroundSound)}
+            </span>
+            <Music className={`w-3.5 h-3.5 ${backgroundSound !== 'none' && settings.soundsEnabled ? 'animate-bounce text-indigo-500' : 'text-slate-400'}`} />
+          </button>
 
           {/* Quick Sound Mute */}
           <button

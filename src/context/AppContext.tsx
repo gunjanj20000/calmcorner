@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { ActivityId, Settings } from '../types';
+import { ActivityId, Settings, BackgroundSoundType } from '../types';
 import { loadSettings, saveSettings, resetSettings as storageReset } from '../services/storageService';
-import { audioService } from '../services/audioService';
+import { audioService, AmbientSoundType } from '../services/audioService';
 
 interface AppContextType {
   settings: Settings;
@@ -13,9 +13,12 @@ interface AppContextType {
   setIsParentSettingsOpen: (open: boolean) => void;
   triggerHaptic: (pattern?: number | number[]) => void;
   speedMultiplier: number;
-  sessionTimeRemaining: number; // in seconds, 0 or negative = expired, null = no timer
+  sessionTimeRemaining: number;
   isSessionExpired: boolean;
   dismissSessionExpired: () => void;
+  backgroundSound: BackgroundSoundType;
+  setBackgroundSound: (sound: BackgroundSoundType) => void;
+  toggleBackgroundSound: () => void;
   playBubblePop: (pitchMod?: number) => void;
   playWaterDrop: (pitch?: number) => void;
   playChime: (noteIndex?: number) => void;
@@ -51,6 +54,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       root.style.backgroundColor = '#F4F7F6';
     }
   }, [settings]);
+
+  // Synchronize Background Sound across ALL activities / screens
+  useEffect(() => {
+    if (!settings.soundsEnabled || settings.backgroundSound === 'none') {
+      audioService.stopAllAmbients();
+    } else {
+      const targetSound = settings.backgroundSound as AmbientSoundType;
+      // Stop other ambients if different
+      const playing = audioService.getPlayingAmbients();
+      playing.forEach((t) => {
+        if (t !== targetSound) {
+          audioService.stopAmbient(t);
+        }
+      });
+      // Start chosen background sound if not playing
+      if (!audioService.isAmbientPlaying(targetSound)) {
+        audioService.startAmbient(targetSound);
+      }
+    }
+  }, [settings.backgroundSound, settings.soundsEnabled]);
 
   // Session timer logic
   useEffect(() => {
@@ -110,6 +133,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateSettings({ timerMinutes: 0 });
   }, [updateSettings]);
 
+  const setBackgroundSound = useCallback((sound: BackgroundSoundType) => {
+    audioService.unlock();
+    updateSettings({ backgroundSound: sound });
+  }, [updateSettings]);
+
+  const toggleBackgroundSound = useCallback(() => {
+    audioService.unlock();
+    if (settings.backgroundSound === 'none') {
+      updateSettings({ backgroundSound: 'tones', soundsEnabled: true });
+    } else {
+      updateSettings({ backgroundSound: 'none' });
+    }
+  }, [settings.backgroundSound, updateSettings]);
+
   // Audio helpers with unlock
   const playBubblePop = useCallback((pitchMod?: number) => {
     audioService.playBubblePop(pitchMod);
@@ -150,6 +187,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         sessionTimeRemaining,
         isSessionExpired,
         dismissSessionExpired,
+        backgroundSound: settings.backgroundSound,
+        setBackgroundSound,
+        toggleBackgroundSound,
         playBubblePop,
         playWaterDrop,
         playChime,

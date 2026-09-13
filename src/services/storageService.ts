@@ -6,6 +6,7 @@ const defaultSettings: Settings = {
   animationSpeed: 'slow',
   soundVolume: 0.5,
   soundsEnabled: true,
+  backgroundSound: 'tones',
   vibrationEnabled: true,
   reduceMotion: false,
   theme: 'soft',

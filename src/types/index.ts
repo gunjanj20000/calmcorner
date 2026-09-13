@@ -12,6 +12,8 @@ export type AnimationSpeed = 'slow' | 'medium' | 'fast';
 
 export type Theme = 'soft' | 'twilight' | 'dark';
 
+export type BackgroundSoundType = 'none' | 'tones' | 'ocean' | 'rain' | 'forest' | 'birds' | 'bells';
+
 export interface ActivityMeta {
   id: ActivityId;
   name: string;
@@ -26,6 +28,7 @@ export interface Settings {
   animationSpeed: AnimationSpeed;
   soundVolume: number; // 0 to 1
   soundsEnabled: boolean;
+  backgroundSound: BackgroundSoundType;
   vibrationEnabled: boolean;
   reduceMotion: boolean;
   theme: Theme;
