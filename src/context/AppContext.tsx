@@ -1,7 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { ActivityId, Settings, BackgroundSoundType } from '../types';
+import { ActivityId, Settings, BackgroundSoundType, CustomTrack } from '../types';
 import { loadSettings, saveSettings, resetSettings as storageReset } from '../services/storageService';
 import { audioService, AmbientSoundType } from '../services/audioService';
+import { 
+  getCustomAudioTrack, 
+  getCustomAudioBlob, 
+  saveCustomAudio, 
+  deleteCustomAudio 
+} from '../services/audioStorage';
 
 interface AppContextType {
   settings: Settings;
@@ -19,6 +25,9 @@ interface AppContextType {
   backgroundSound: BackgroundSoundType;
   setBackgroundSound: (sound: BackgroundSoundType) => void;
   toggleBackgroundSound: () => void;
+  customTrack: CustomTrack | null;
+  uploadCustomTrack: (file: File) => Promise<void>;
+  removeCustomTrack: () => Promise<void>;
   playBubblePop: (pitchMod?: number) => void;
   playWaterDrop: (pitch?: number) => void;
   playChime: (noteIndex?: number) => void;
@@ -34,6 +43,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isParentSettingsOpen, setIsParentSettingsOpen] = useState(false);
   const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number>(0);
   const [isSessionExpired, setIsSessionExpired] = useState(false);
+  const [customTrack, setCustomTrack] = useState<CustomTrack | null>(null);
+
+  // Load custom audio track on startup from IndexedDB
+  useEffect(() => {
+    let active = true;
+    getCustomAudioTrack().then((track) => {
+      if (active && track) {
+        setCustomTrack(track);
+        getCustomAudioBlob().then((blob) => {
+          if (active && blob) {
+            audioService.setCustomAudioBlob(blob);
+          }
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Sync settings to storage and audioService
   useEffect(() => {
@@ -141,11 +169,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleBackgroundSound = useCallback(() => {
     audioService.unlock();
     if (settings.backgroundSound === 'none') {
-      updateSettings({ backgroundSound: 'tones', soundsEnabled: true });
+      // Default to custom track if available, else tones
+      const defaultTo = customTrack ? 'custom' : 'tones';
+      updateSettings({ backgroundSound: defaultTo, soundsEnabled: true });
     } else {
       updateSettings({ backgroundSound: 'none' });
     }
-  }, [settings.backgroundSound, updateSettings]);
+  }, [settings.backgroundSound, customTrack, updateSettings]);
+
+  const uploadCustomTrack = useCallback(async (file: File) => {
+    triggerHaptic(20);
+    const track = await saveCustomAudio(file);
+    setCustomTrack(track);
+    audioService.setCustomAudioBlob(file);
+    audioService.unlock();
+    updateSettings({ backgroundSound: 'custom', soundsEnabled: true });
+  }, [triggerHaptic, updateSettings]);
+
+  const removeCustomTrack = useCallback(async () => {
+    triggerHaptic(20);
+    await deleteCustomAudio();
+    setCustomTrack(null);
+    audioService.setCustomAudioBlob(null);
+    if (settings.backgroundSound === 'custom') {
+      updateSettings({ backgroundSound: 'none' });
+    }
+  }, [triggerHaptic, settings.backgroundSound, updateSettings]);
 
   // Audio helpers with unlock
   const playBubblePop = useCallback((pitchMod?: number) => {
@@ -190,6 +239,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         backgroundSound: settings.backgroundSound,
         setBackgroundSound,
         toggleBackgroundSound,
+        customTrack,
+        uploadCustomTrack,
+        removeCustomTrack,
         playBubblePop,
         playWaterDrop,
         playChime,

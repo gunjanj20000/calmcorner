@@ -1,7 +1,7 @@
 // High-Fidelity Procedural Calming Web Audio Service
 // 100% offline, zero network dependencies, non-jarring acoustic & ambient synthesis
 
-export type AmbientSoundType = 'rain' | 'ocean' | 'birds' | 'forest' | 'tones' | 'bells';
+export type AmbientSoundType = 'rain' | 'ocean' | 'birds' | 'forest' | 'tones' | 'bells' | 'custom';
 
 class AudioService {
   private ctx: AudioContext | null = null;
@@ -10,6 +10,8 @@ class AudioService {
   private activeAmbients: Map<AmbientSoundType, { stop: () => void; gainNode: GainNode }> = new Map();
   private isMuted: boolean = false;
   private volume: number = 0.5;
+  private customAudioEl: HTMLAudioElement | null = null;
+  private customAudioUrl: string | null = null;
 
   private initContext() {
     if (!this.ctx) {
@@ -39,11 +41,37 @@ class AudioService {
     }
   }
 
+  public setCustomAudioBlob(blob: Blob | null) {
+    if (this.customAudioUrl) {
+      URL.revokeObjectURL(this.customAudioUrl);
+      this.customAudioUrl = null;
+    }
+    if (this.customAudioEl) {
+      this.customAudioEl.pause();
+      this.customAudioEl.src = '';
+      this.customAudioEl = null;
+    }
+
+    if (blob) {
+      try {
+        this.customAudioUrl = URL.createObjectURL(blob);
+        this.customAudioEl = new Audio(this.customAudioUrl);
+        this.customAudioEl.loop = true;
+        this.customAudioEl.volume = this.isMuted ? 0 : this.volume * 0.85;
+      } catch (e) {
+        console.warn('Failed to initialize custom audio element:', e);
+      }
+    }
+  }
+
   public setVolume(vol: number) {
     this.volume = Math.max(0, Math.min(1, vol));
     if (this.masterGain && this.ctx) {
       const target = this.isMuted ? 0 : this.volume;
       this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
+    }
+    if (this.customAudioEl) {
+      this.customAudioEl.volume = this.isMuted ? 0 : this.volume * 0.85;
     }
   }
 
@@ -52,6 +80,9 @@ class AudioService {
     if (this.masterGain && this.ctx) {
       const target = this.isMuted ? 0 : this.volume;
       this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
+    }
+    if (this.customAudioEl) {
+      this.customAudioEl.volume = this.isMuted ? 0 : this.volume * 0.85;
     }
   }
 
@@ -266,9 +297,15 @@ class AudioService {
       item.stop();
     });
     this.activeAmbients.clear();
+    if (this.customAudioEl) {
+      this.customAudioEl.pause();
+    }
   }
 
   public stopAmbient(type: AmbientSoundType) {
+    if (type === 'custom' && this.customAudioEl) {
+      this.customAudioEl.pause();
+    }
     const active = this.activeAmbients.get(type);
     if (active) {
       active.stop();
@@ -305,6 +342,9 @@ class AudioService {
         break;
       case 'bells':
         stopFn = this.createBellsSynthesizer(ambientGain);
+        break;
+      case 'custom':
+        stopFn = this.createCustomAudioSynthesizer();
         break;
     }
 
@@ -344,6 +384,29 @@ class AudioService {
       b6 = white * 0.115926;
     }
     return buffer;
+  }
+
+  // 0. Custom Audio Player
+  private createCustomAudioSynthesizer(): () => void {
+    if (!this.customAudioEl) return () => {};
+    try {
+      this.customAudioEl.currentTime = 0;
+      this.customAudioEl.volume = this.isMuted ? 0 : this.volume * 0.85;
+      const playPromise = this.customAudioEl.play();
+      if (playPromise) {
+        playPromise.catch((e) => {
+          console.warn('Custom audio playback blocked:', e);
+        });
+      }
+    } catch (e) {
+      console.warn('Custom audio play error:', e);
+    }
+
+    return () => {
+      if (this.customAudioEl) {
+        this.customAudioEl.pause();
+      }
+    };
   }
 
   // 1. Rain Synthesizer (Natural soothing rain with soft droplet clicks)

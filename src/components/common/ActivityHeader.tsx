@@ -16,7 +16,8 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({ title, emoji, on
     updateSettings, 
     triggerHaptic, 
     backgroundSound, 
-    setBackgroundSound 
+    setBackgroundSound,
+    customTrack
   } = useApp();
 
   const handleHome = () => {
@@ -33,7 +34,9 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({ title, emoji, on
     updateSettings({ soundsEnabled: !settings.soundsEnabled });
   };
 
-  const soundCycle: BackgroundSoundType[] = ['tones', 'ocean', 'rain', 'forest', 'birds', 'bells', 'none'];
+  const soundCycle: BackgroundSoundType[] = customTrack
+    ? ['custom', 'tones', 'ocean', 'rain', 'forest', 'birds', 'bells', 'none']
+    : ['tones', 'ocean', 'rain', 'forest', 'birds', 'bells', 'none'];
 
   const cycleBackgroundSound = () => {
     triggerHaptic(20);
@@ -48,6 +51,7 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({ title, emoji, on
 
   const getSoundEmoji = (sound: BackgroundSoundType) => {
     switch (sound) {
+      case 'custom': return '🎶';
       case 'tones': return '🎵';
       case 'ocean': return '🌊';
       case 'rain': return '🌧️';
@@ -60,6 +64,7 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({ title, emoji, on
 
   const getSoundLabel = (sound: BackgroundSoundType) => {
     switch (sound) {
+      case 'custom': return customTrack ? customTrack.name : 'Custom';
       case 'tones': return 'Tones';
       case 'ocean': return 'Ocean';
       case 'rain': return 'Rain';
@@ -109,7 +114,7 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({ title, emoji, on
           }`}
         >
           <span className="text-xl">{getSoundEmoji(backgroundSound)}</span>
-          <span className="text-sm font-extrabold hidden md:inline">
+          <span className="text-sm font-extrabold hidden md:inline max-w-[120px] truncate">
             {getSoundLabel(backgroundSound)}
           </span>
           <Music className={`w-3.5 h-3.5 ${backgroundSound !== 'none' && settings.soundsEnabled ? 'animate-bounce text-indigo-500' : 'text-slate-400'}`} />

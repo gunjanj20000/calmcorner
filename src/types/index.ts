@@ -12,7 +12,15 @@ export type AnimationSpeed = 'slow' | 'medium' | 'fast';
 
 export type Theme = 'soft' | 'twilight' | 'dark';
 
-export type BackgroundSoundType = 'none' | 'tones' | 'ocean' | 'rain' | 'forest' | 'birds' | 'bells';
+export type BackgroundSoundType = 'none' | 'tones' | 'ocean' | 'rain' | 'forest' | 'birds' | 'bells' | 'custom';
+
+export interface CustomTrack {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: number;
+}
 
 export interface ActivityMeta {
   id: ActivityId;

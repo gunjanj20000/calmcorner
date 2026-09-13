@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ActivityHeader } from '../common/ActivityHeader';
 import { useApp } from '../../context/AppContext';
 import { audioService, AmbientSoundType } from '../../services/audioService';
-import { Play, Pause, Volume2, VolumeX, Square } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Square, Upload } from 'lucide-react';
 
 interface SoundOption {
   type: AmbientSoundType;
@@ -15,7 +15,17 @@ interface SoundOption {
 }
 
 export const SoundsActivity: React.FC = () => {
-  const { settings, updateSettings, triggerHaptic, backgroundSound, setBackgroundSound } = useApp();
+  const { 
+    settings, 
+    updateSettings, 
+    triggerHaptic, 
+    backgroundSound, 
+    setBackgroundSound,
+    customTrack,
+    uploadCustomTrack
+  } = useApp();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const [activeSounds, setActiveSounds] = useState<AmbientSoundType[]>(() => {
     return backgroundSound !== 'none' ? [backgroundSound as AmbientSoundType] : [];
   });
@@ -34,6 +44,11 @@ export const SoundsActivity: React.FC = () => {
     audioService.unlock();
     if (!settings.soundsEnabled) {
       updateSettings({ soundsEnabled: true });
+    }
+
+    if (type === 'custom' && !customTrack) {
+      fileInputRef.current?.click();
+      return;
     }
 
     if (backgroundSound === type) {
@@ -55,13 +70,22 @@ export const SoundsActivity: React.FC = () => {
 
   const soundOptions: SoundOption[] = [
     {
-      type: 'rain',
-      emoji: '🌧️',
-      name: 'Gentle Rain',
-      description: 'Soft rhythmic raindrops',
-      color: 'text-sky-600 dark:text-sky-400',
-      borderActive: 'border-sky-500 ring-4 ring-sky-200 dark:ring-sky-900/60',
-      bgActive: 'bg-sky-50 dark:bg-sky-950/60',
+      type: 'custom',
+      emoji: '🎶',
+      name: customTrack ? customTrack.name : 'Custom Music',
+      description: customTrack ? 'Your custom audio' : 'Tap to upload audio',
+      color: 'text-pink-600 dark:text-pink-400',
+      borderActive: 'border-pink-500 ring-4 ring-pink-200 dark:ring-pink-900/60',
+      bgActive: 'bg-pink-50 dark:bg-pink-950/60',
+    },
+    {
+      type: 'tones',
+      emoji: '🎵',
+      name: 'Soft Tones',
+      description: '432Hz calming ambient pad',
+      color: 'text-indigo-600 dark:text-indigo-400',
+      borderActive: 'border-indigo-500 ring-4 ring-indigo-200 dark:ring-indigo-900/60',
+      bgActive: 'bg-indigo-50 dark:bg-indigo-950/60',
     },
     {
       type: 'ocean',
@@ -73,13 +97,13 @@ export const SoundsActivity: React.FC = () => {
       bgActive: 'bg-teal-50 dark:bg-teal-950/60',
     },
     {
-      type: 'birds',
-      emoji: '🐦',
-      name: 'Peaceful Birds',
-      description: 'Morning woodland chirps',
-      color: 'text-amber-600 dark:text-amber-400',
-      borderActive: 'border-amber-500 ring-4 ring-amber-200 dark:ring-amber-900/60',
-      bgActive: 'bg-amber-50 dark:bg-amber-950/60',
+      type: 'rain',
+      emoji: '🌧️',
+      name: 'Gentle Rain',
+      description: 'Soft rhythmic raindrops',
+      color: 'text-sky-600 dark:text-sky-400',
+      borderActive: 'border-sky-500 ring-4 ring-sky-200 dark:ring-sky-900/60',
+      bgActive: 'bg-sky-50 dark:bg-sky-950/60',
     },
     {
       type: 'forest',
@@ -91,13 +115,13 @@ export const SoundsActivity: React.FC = () => {
       bgActive: 'bg-emerald-50 dark:bg-emerald-950/60',
     },
     {
-      type: 'tones',
-      emoji: '🎵',
-      name: 'Soft Tones',
-      description: '432Hz calming ambient pad',
-      color: 'text-indigo-600 dark:text-indigo-400',
-      borderActive: 'border-indigo-500 ring-4 ring-indigo-200 dark:ring-indigo-900/60',
-      bgActive: 'bg-indigo-50 dark:bg-indigo-950/60',
+      type: 'birds',
+      emoji: '🐦',
+      name: 'Peaceful Birds',
+      description: 'Morning woodland chirps',
+      color: 'text-amber-600 dark:text-amber-400',
+      borderActive: 'border-amber-500 ring-4 ring-amber-200 dark:ring-amber-900/60',
+      bgActive: 'bg-amber-50 dark:bg-amber-950/60',
     },
     {
       type: 'bells',
@@ -151,8 +175,8 @@ export const SoundsActivity: React.FC = () => {
           </div>
         </div>
 
-        {/* 6 Sound Option Grid with Large Touch Targets */}
-        <div className="w-full grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-5 my-2">
+        {/* 7 Sound Option Grid with Large Touch Targets */}
+        <div className="w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-5 my-2">
           {soundOptions.map((opt) => {
             const isPlaying = activeSounds.includes(opt.type);
 
@@ -160,17 +184,33 @@ export const SoundsActivity: React.FC = () => {
               <button
                 key={opt.type}
                 onClick={() => handleToggleSound(opt.type)}
-                className={`touch-btn p-5 sm:p-6 rounded-3xl border-2 flex flex-col items-center justify-center text-center transition-all active:scale-95 select-none ${
+                className={`touch-btn relative p-5 sm:p-6 rounded-3xl border-2 flex flex-col items-center justify-center text-center transition-all active:scale-95 select-none ${
                   isPlaying
                     ? `${opt.borderActive} ${opt.bgActive} shadow-lg scale-102`
                     : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm'
                 }`}
                 aria-label={`Toggle sound ${opt.name}`}
               >
+                {/* Replace custom audio button */}
+                {opt.type === 'custom' && customTrack && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerHaptic(15);
+                      fileInputRef.current?.click();
+                    }}
+                    title="Change custom audio"
+                    className="absolute top-3 right-3 p-2 rounded-full bg-white/90 dark:bg-slate-700/90 hover:bg-white text-slate-500 hover:text-slate-800 dark:hover:text-slate-100 shadow-sm transition-all"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                  </button>
+                )}
+
                 <div className="text-4xl sm:text-5xl mb-2.5 transform transition-transform">
                   {opt.emoji}
                 </div>
-                <div className="font-extrabold text-lg sm:text-xl text-slate-800 dark:text-slate-100">
+                <div className="font-extrabold text-lg sm:text-xl text-slate-800 dark:text-slate-100 max-w-full truncate px-2">
                   {opt.name}
                 </div>
                 <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">
@@ -179,7 +219,12 @@ export const SoundsActivity: React.FC = () => {
 
                 {/* Status indicator */}
                 <div className="mt-3 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/80 dark:bg-slate-900/60 shadow-xs">
-                  {isPlaying ? (
+                  {opt.type === 'custom' && !customTrack ? (
+                    <>
+                      <Upload className="w-3.5 h-3.5 text-pink-500" />
+                      <span className="text-pink-600 dark:text-pink-400">Upload</span>
+                    </>
+                  ) : isPlaying ? (
                     <>
                       <Pause className="w-3.5 h-3.5 text-teal-600 dark:text-teal-400" />
                       <span className="text-teal-700 dark:text-teal-300">Playing</span>
@@ -195,6 +240,20 @@ export const SoundsActivity: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Hidden File Input for Custom Music */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="audio/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              await uploadCustomTrack(file);
+            }
+          }}
+        />
 
         {/* Master Audio Controls Bar at Bottom */}
         <div className="w-full max-w-xl mt-6 p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-800 shadow-xl border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-4">
