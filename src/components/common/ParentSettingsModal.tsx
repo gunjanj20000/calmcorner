@@ -45,6 +45,7 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
   // Parent Gate state: requires 3-second hold to unlock
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [holdProgress, setHoldProgress] = useState(0); // 0 to 100
+  const isHoldingRef = useRef(false);
   const holdTimerRef = useRef<number | null>(null);
   const holdStartTimeRef = useRef<number>(0);
 
@@ -88,22 +89,34 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
     if (!isOpen) {
       setIsUnlocked(false);
       setHoldProgress(0);
-      if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
+      isHoldingRef.current = false;
+      if (holdTimerRef.current) {
+        cancelAnimationFrame(holdTimerRef.current);
+        holdTimerRef.current = null;
+      }
     }
   }, [isOpen]);
 
   const startHolding = () => {
-    if (isUnlocked) return;
+    if (isUnlocked || isHoldingRef.current) return;
+    isHoldingRef.current = true;
     triggerHaptic(15);
     holdStartTimeRef.current = Date.now();
 
+    if (holdTimerRef.current) {
+      cancelAnimationFrame(holdTimerRef.current);
+    }
+
     const checkHold = () => {
+      if (!isHoldingRef.current) return;
       const elapsed = Date.now() - holdStartTimeRef.current;
       const progress = Math.min(100, (elapsed / 2500) * 100);
       setHoldProgress(progress);
 
       if (progress >= 100) {
+        isHoldingRef.current = false;
         setIsUnlocked(true);
+        setHoldProgress(100);
         triggerHaptic([30, 50, 40]);
       } else {
         holdTimerRef.current = requestAnimationFrame(checkHold);
@@ -114,10 +127,42 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
   };
 
   const stopHolding = () => {
+    isHoldingRef.current = false;
+    if (holdTimerRef.current) {
+      cancelAnimationFrame(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
     if (!isUnlocked) {
-      if (holdTimerRef.current) cancelAnimationFrame(holdTimerRef.current);
       setHoldProgress(0);
     }
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (isUnlocked) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.preventDefault();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+    startHolding();
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+    stopHolding();
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLButtonElement>) => {
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {}
+    stopHolding();
   };
 
   if (!isOpen) return null;
@@ -175,42 +220,72 @@ export const ParentSettingsModal: React.FC<ParentSettingsModalProps> = ({ isOpen
             </div>
 
             {/* Hold Button with circular fill */}
-            <div className="relative flex items-center justify-center">
-              <svg className="w-32 h-32 transform -rotate-90">
+            <div className="relative flex items-center justify-center my-2 select-none">
+              <svg 
+                viewBox="0 0 128 128" 
+                width="128" 
+                height="128" 
+                className="w-32 h-32 transform -rotate-90 pointer-events-none select-none"
+              >
+                {/* Background Ring Track */}
                 <circle
                   cx="64"
                   cy="64"
                   r="56"
-                  stroke="currentColor"
+                  stroke="#cbd5e1"
                   strokeWidth="8"
-                  className="text-slate-200 dark:text-slate-800"
                   fill="transparent"
+                  className="stroke-slate-300 dark:stroke-slate-700"
                 />
+                {/* Active Vibrant Blue/Indigo Progress Ring */}
                 <circle
                   cx="64"
                   cy="64"
                   r="56"
-                  stroke="currentColor"
+                  stroke="#4f46e5"
                   strokeWidth="8"
-                  className="text-indigo-600 dark:text-indigo-400 transition-all duration-75"
                   fill="transparent"
+                  className="stroke-indigo-600 dark:stroke-indigo-400"
                   strokeDasharray={2 * Math.PI * 56}
                   strokeDashoffset={2 * Math.PI * 56 * (1 - holdProgress / 100)}
                   strokeLinecap="round"
+                  style={{
+                    filter: holdProgress > 0 ? 'drop-shadow(0 0 6px rgba(79, 70, 229, 0.7))' : 'none'
+                  }}
                 />
               </svg>
 
               <button
-                onMouseDown={startHolding}
-                onMouseUp={stopHolding}
-                onMouseLeave={stopHolding}
-                onTouchStart={startHolding}
-                onTouchEnd={stopHolding}
-                onTouchCancel={stopHolding}
-                className="absolute w-24 h-24 rounded-full bg-indigo-600 hover:bg-indigo-700 text-white flex flex-col items-center justify-center font-bold text-sm shadow-xl active:scale-95 transition-transform select-none cursor-pointer"
+                type="button"
+                onPointerDown={handlePointerDown}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerCancel}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  startHolding();
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  stopHolding();
+                }}
+                onTouchCancel={(e) => {
+                  e.preventDefault();
+                  stopHolding();
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{
+                  touchAction: 'none',
+                  WebkitTouchCallout: 'none',
+                  WebkitUserSelect: 'none',
+                  userSelect: 'none',
+                }}
+                className="absolute w-24 h-24 rounded-full bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white flex flex-col items-center justify-center font-bold text-sm shadow-xl active:scale-95 transition-transform select-none cursor-pointer before:absolute before:-inset-3 before:rounded-full"
+                aria-label="Hold for 3 seconds to unlock parent settings"
               >
-                <Lock className="w-7 h-7 mb-1" />
-                <span>{holdProgress > 0 ? `${Math.round(holdProgress)}%` : 'HOLD'}</span>
+                <Lock className={`w-7 h-7 mb-1 transition-transform ${holdProgress > 0 ? 'scale-110 text-amber-300' : 'text-white'}`} />
+                <span className="font-extrabold tracking-wider">
+                  {holdProgress > 0 ? `${Math.round(holdProgress)}%` : 'HOLD'}
+                </span>
               </button>
             </div>
           </div>
